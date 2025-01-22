@@ -4,18 +4,15 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recipe.model.dto.recipe.RecipeSearchReq;
 import com.recipe.model.dto.recipe.RecipeSearchRes;
-import com.recipe.util.QueryParamSerializerUtil;
+import com.recipe.util.QueryParamUtil;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.asm.TypeReference;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.util.HashMap;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -43,29 +40,14 @@ public class SpoonacularRestService {
                 .path("/recipes/complexSearch")
                 .queryParam("apiKey", API_KEY);
 
-//        uriComponentsBuilder
-//                .queryParam("query", req.getRecipeName())
-//                .queryParam("addRecipeInformation", req.isAddRecipeInformation())
-//                .queryParam("minServings", req.getMinServings())
-//                .queryParam("sort", req.getSort())
-//                .queryParam("sortDirection", req.getSortDirection())
-//                .queryParam("apiKey", API_KEY);
-//
-//        String intolerances = req.getIntolerances()
-//                .stream()
-//                .map(Enum::name)
-//                .collect(Collectors.joining(","));
-//
-//        uriComponentsBuilder.queryParam("intolerances", intolerances);
-        uriComponentsBuilder.query(QueryParamSerializerUtil.toQueryParams(req));
 
         ObjectMapper objectMapper = new ObjectMapper().setSerializationInclusion(JsonInclude.Include.NON_NULL);
-        HashMap requestValues = objectMapper.convertValue(req, HashMap.class);
 
-//        requestValues.forEach((k, v) -> {
-//            uriComponentsBuilder.queryParam((String) k, v);
-//        });
+        Map fieldMap = objectMapper.convertValue(req, Map.class);
 
+        fieldMap.forEach((k, v) -> {
+            uriComponentsBuilder.queryParam((String) k, QueryParamUtil.convertValueToString(v));
+        });
 
         try {
             ResponseEntity<RecipeSearchRes> responseEntity =
