@@ -6,8 +6,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.client.ClientHttpRequestInterceptor;
-import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.http.client.*;
 import org.springframework.web.client.DefaultResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
 
@@ -15,6 +14,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.time.Duration;
+import java.util.Collections;
 import java.util.stream.Collectors;
 
 @Configuration
@@ -22,13 +22,17 @@ public class RestTemplateConfig {
 
     Logger log = LoggerFactory.getLogger(RestTemplateConfig.class);
     @Bean
-    public RestTemplate restTemplate(RestTemplateBuilder builder) {
-        return builder
-                .connectTimeout(Duration.ofSeconds(5))
-                .readTimeout(Duration.ofSeconds(10))
-                .interceptors(requestInterceptor(), responseInterceptor())
-                .errorHandler(new CustomResponseErrorHandler())
-                .build();
+    public RestTemplate restTemplate() {
+//        return builder
+//                .connectTimeout(Duration.ofSeconds(5))
+//                .readTimeout(Duration.ofSeconds(10))
+//                .interceptors(requestInterceptor(), responseInterceptor())
+//                .errorHandler(new CustomResponseErrorHandler())
+//                .build();
+        ClientHttpRequestFactory factory = new BufferingClientHttpRequestFactory(new SimpleClientHttpRequestFactory());
+        RestTemplate template = new RestTemplate(factory);
+        template.setInterceptors(Collections.singletonList(new RequestResponseLoggingInterceptor()));
+        return template;
     }
 
     private ClientHttpRequestInterceptor requestInterceptor() {
