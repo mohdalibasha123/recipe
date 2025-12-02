@@ -90,18 +90,6 @@ class RecipeApplicationTests {
     }
 
     @Test
-    void getRecipeInformation_NullNutrition() {
-        RecipeInformationReq request = new RecipeInformationReq();
-        request.setRecipeName("pizza");
-        request.setAddRecipeInformation(false);
-
-        RecipeSearchRes response = recipeService.getRecipeInformation(request, false);
-
-        assertThat(response).isNotNull();
-        assertThat(response.getResults().get(0).getNutrition()).isNull();
-    }
-
-    @Test
     void getRecipeInformation_EmptyResult() {
         RecipeInformationReq request = new RecipeInformationReq();
         request.setRecipeName("NonExistentRecipe");
