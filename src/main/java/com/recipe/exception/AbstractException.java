@@ -23,4 +23,9 @@ public class AbstractException extends RuntimeException {
 		this.detailedMessage = detailedMessage;
 		this.values = values;
 	}
+
+	public AbstractException(String message, String detailedMessage) {
+		this.message = message;
+		this.detailedMessage = detailedMessage;
+	}
 }

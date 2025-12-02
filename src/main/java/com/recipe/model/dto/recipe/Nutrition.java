@@ -8,4 +8,5 @@ import java.util.List;
 public class Nutrition {
 
     private List<Nutrient> nutrients;
+    private List<Ingredient> ingredients;
 }
