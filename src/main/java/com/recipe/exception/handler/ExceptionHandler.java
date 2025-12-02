@@ -12,13 +12,8 @@ import org.springframework.context.annotation.PropertySource;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.FieldError;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
-import org.springframework.web.bind.annotation.ResponseStatus;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Objects;
 
 @ControllerAdvice
@@ -33,9 +28,20 @@ public class ExceptionHandler {
     private static final String MESSAGE_SUFFIX = ".msg";
     private final Environment environment;
 
+    @org.springframework.web.bind.annotation.ExceptionHandler(Exception.class)
+    public ResponseEntity<?> handleGeneralException(Exception ex, HttpServletRequest request) {
+        return getResponseEntity(ex, request);
+    }
+
     @org.springframework.web.bind.annotation.ExceptionHandler(AbstractException.class)
     public ResponseEntity<?> handleRuntimeException(AbstractException ex, HttpServletRequest request) {
         return getResponseEntity(ex, request);
+    }
+
+    private ResponseEntity<?> getResponseEntity(Exception ex, HttpServletRequest request) {
+        ApiErrorResponse apiErrorResponse = assembleExceptionResponse(ex);
+        log.warn("Error while executing " + requestToString(request), ex);
+        return new ResponseEntity<>(apiErrorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     private ResponseEntity<?> getResponseEntity(AbstractException ex, HttpServletRequest request) {
@@ -45,22 +51,6 @@ public class ExceptionHandler {
         HttpStatus httpStatus = Objects.isNull(ex.getHttpStatus()) ? HttpStatus.BAD_REQUEST : ex.getHttpStatus();
         return new ResponseEntity<>(apiErrorResponse, httpStatus);
     }
-
-    @org.springframework.web.bind.annotation.ExceptionHandler(MethodArgumentNotValidException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Map<String, String> handleConstraintViolationException(MethodArgumentNotValidException ex, HttpServletRequest request) {
-        log.warn("Error while executing " + requestToString(request), ex);
-        Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getAllErrors().forEach((error) -> {
-            String fieldName = ((FieldError) error).getField();
-            String message = environment.getProperty(Objects.requireNonNull(error.getCodes())[error.getCodes().length - 1] + ".message");
-            String errorMessage = message != null ? message : error.getDefaultMessage();
-            errors.put(fieldName, errorMessage);
-        });
-        return errors;
-    }
-
-
 
     private ApiErrorResponse assembleExceptionResponse(Exception ex){
         String code = environment.getProperty(ex.getClass().getSimpleName() + CODE_SUFFIX);
@@ -80,7 +70,7 @@ public class ExceptionHandler {
 
     private String formatMessage(String message, Object... values) {
         for (Object value : values) {
-            message = message.replaceFirst("\\{}", value != null ? value.toString() : "null");
+            message = message.replaceFirst("\\{}", value != null ? value.toString() : "");
         }
         return message;
     }

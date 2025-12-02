@@ -1,57 +1,102 @@
 package com.recipe.service;
 
-import com.recipe.model.dto.recipe.RecipeSearchReq;
-import com.recipe.model.dto.recipe.RecipeSearchRes;
-import com.recipe.exception.handler.NoSuchElementFoundException;
+import com.recipe.exception.AbstractException;
+import com.recipe.exception.NoSuchElementFoundException;
+import com.recipe.model.dto.recipe.*;
 import com.recipe.service.client.SpoonacularRestService;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @AllArgsConstructor
+@Slf4j
 public class RecipeService {
-
 
     private final SpoonacularRestService spoonacularRestService;
 
-
-
-    //    public Map<String, Object> searchRecipes(String query, String cuisine, String diet, int number) {
-//        String url = String.format("%s/recipes/complexSearch?query=%s&cuisine=%s&diet=%s&number=%d&apiKey=%s",
-//                API_BASE_URL, query, cuisine, diet, number, API_KEY);
-//        return restTemplate.getForObject(url, Map.class);
-//    }
-
     public RecipeSearchRes searchRecipes(RecipeSearchReq recipeSearchReq) {
+
+        if(Objects.isNull(recipeSearchReq)) {
+            throw new AbstractException("Recipe Search Request is Null");
+        }
+
         RecipeSearchRes recipeSearchRes = spoonacularRestService.recipesComplexSearch(recipeSearchReq);
-        if(Objects.isNull(recipeSearchRes)) {
+
+        if(Objects.isNull(recipeSearchRes) || CollectionUtils.isEmpty(recipeSearchRes.getResults())) {
             throw new NoSuchElementFoundException("Recipe not found for the search request {}", recipeSearchReq);
         }
         return recipeSearchRes;
     }
 
-//    public Map<String, Object> getRecipeDetails(String id) {
-//        String url = String.format("%s/recipes/%s/information?apiKey=%s", API_BASE_URL, id, API_KEY);
-//        return restTemplate.getForObject(url, Map.class);
-//    }
+    public RecipeSearchRes getRecipeInformation(RecipeSearchReq recipeSearchReq, boolean excludeIngredients) {
 
-//    public Map<String, Object> getCustomizedCalories(String id, List<String> excludeIngredients) {
-//        Map<String, Object> recipeDetails = getRecipeDetails(id);
-//        if (recipeDetails == null) return null;
-//
-//        double totalCalories = 0;
-//        List<Map<String, Object>> ingredients = (List<Map<String, Object>>) recipeDetails.get("extendedIngredients");
-//
-//        for (Map<String, Object> ingredient : ingredients) {
-//            String ingredientName = (String) ingredient.get("name");
-//            if (!excludeIngredients.contains(ingredientName)) {
-//                totalCalories += (double) ingredient.get("amount");
-//            }
-//        }
-//        recipeDetails.put("customizedCalories", totalCalories);
-//        return recipeDetails;
-//    }
+        log.info("getRecipeInformation :: excludeIngredients flag {}", excludeIngredients);
+        RecipeSearchRes recipeSearchRes = searchRecipes(recipeSearchReq);
+        calculateRecipesTotalCalories(recipeSearchRes.getResults(), recipeSearchReq ,excludeIngredients);
+        return recipeSearchRes;
+    }
+
+    public void calculateRecipesTotalCalories(List<RecipeDto> recipes,
+                                              RecipeSearchReq recipeSearchReq,
+                                              boolean excludeIngredients) {
+
+        if (CollectionUtils.isEmpty(recipes)) {
+            return;
+        }
+
+        Set<String> ingredientsToExclude = prepareIngredientsToExclude(recipeSearchReq, excludeIngredients);
+        log.info("calculateRecipesTotalCalories :: ingredientsToExclude values {}", ingredientsToExclude);
+
+
+        for (RecipeDto recipe : recipes) {
+            double totalCalories = calculateRecipeCalories(recipe, ingredientsToExclude);
+            recipe.setTotalCalories(totalCalories);
+        }
+    }
+
+    /**
+     * Prepares the set of ingredients to exclude based excludeIngredients flag.
+     */
+    private Set<String> prepareIngredientsToExclude(RecipeSearchReq recipeSearchReq, boolean excludeIngredients) {
+        if (!excludeIngredients) {
+            return Collections.emptySet();
+        }
+
+        Set<String> ingredientsToExclude = ((RecipeNutritionInformationReq) recipeSearchReq).getIngredientsToExclude();
+
+        if (CollectionUtils.isEmpty(ingredientsToExclude)) {
+            return Collections.emptySet();
+        }
+
+        return ingredientsToExclude.stream()
+                .map(String::toLowerCase)
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * Calculates the total calories for the recipe, exclude ingredient if ingredientsToExclude contain elements
+     */
+    private double calculateRecipeCalories(RecipeDto recipe, Set<String> ingredientsToExclude) {
+        if (Objects.isNull(recipe.getNutrition()) || CollectionUtils.isEmpty(recipe.getNutrition().getIngredients())) {
+            return 0.0;
+        }
+
+        return recipe.getNutrition().getIngredients()
+                .stream()
+                .filter(ingredient -> ingredientsToExclude.stream()
+                        .noneMatch(excluded -> ingredient.getName().toLowerCase().contains(excluded)))
+                .flatMap(ingredient -> ingredient.getNutrients().stream())
+                .filter(nutrient -> "calories".equalsIgnoreCase(nutrient.getName()))
+                .mapToDouble(Nutrient::getAmount)
+                .sum();
+    }
+
 }
