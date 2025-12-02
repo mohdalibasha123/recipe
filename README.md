@@ -12,7 +12,7 @@ This backend:
 
 - Is built with **Java 17** and **Spring Boot**.
 - Follows RESTful API best practices.
-- Acts as a **secure middleware** between the frontend (e.g. React) and the **Spoonacular API**.
+- Acts as a **secure middleware** between the frontend (React) and the **Spoonacular API**.
 - Keeps the **Spoonacular API key** on the server side and never exposes it to the client.
 
 
@@ -31,194 +31,91 @@ This backend:
 - Exclude ingredients from the calorie calculation via a dedicated endpoint.
 - Centralized error handling and validation.
 - Integrated **Swagger UI** for exploring and testing the API.
-- Dockerized (multi-stage) build for consistent runtime across environments.
+- Containerized backend using Docker for consistent runtime across environments.
 
 ---
 
 ## Setup Instructions
 
-This section covers **all steps** needed to run the backend on **Windows**, **Linux**, and **macOS**, using either:
+This section covers **all steps** needed to run the backend on **Windows**, **Linux**, and **macOS**, using **Docker as the recommended way**.  
+An optional manual method with Java 17 + Maven is also described.
 
-- **Docker**, or
-- **Manual run** with Maven and Java.
-
-### 1. Prerequisites
-
-Make sure you have:
-
-- **Java 17**
-- **Maven** (if running manually)
-- **Docker** (if running via Docker)
-- A valid **Spoonacular API key**
-
-The file `src/main/resources/application.properties` uses an environment variable for the API key:
+The backend expects the Spoonacular API key to be provided via an environment variable:
 
 ```properties
 spoonacular.api_key=${SPOONACULAR_API_KEY}
 ```
 
-> Spring Boot will read the key from the `SPOONACULAR_API_KEY` environment variable.  
-> You must set this variable **before** starting the application (or pass it into Docker).
-
 ---
 
-### 2. Set `SPOONACULAR_API_KEY` (Windows, Linux, macOS)
+## Quick Start – Run with Docker (Recommended for All OS)
 
-You need to set the `SPOONACULAR_API_KEY` environment variable so that Spring can resolve `spoonacular.api_key=${SPOONACULAR_API_KEY}`.
+These steps work on **Windows**, **macOS**, and **Linux**.
 
-#### 2.1 Windows
+### 1. Prerequisites
 
-**PowerShell:**
+- **Docker** installed and running:
+    - Windows / macOS: Docker Desktop.
+    - Linux: Docker Engine (via your distribution's package manager).
+- A valid **Spoonacular API key**.
+- The backend project cloned locally (this repository).
 
-```powershell
-$env:SPOONACULAR_API_KEY="your-real-spoonacular-key"
-```
-
-**Command Prompt (CMD):**
-
-```cmd
-set SPOONACULAR_API_KEY=your-real-spoonacular-key
-```
-
-> Run `mvn`, `java`, or `docker run` from the **same terminal** where you set the variable, or configure it in the system environment variables for a permanent setup.
-
----
-
-#### 2.2 Linux (bash/zsh)
-
-In your terminal:
+### 2. Clone the repository
 
 ```bash
-export SPOONACULAR_API_KEY="your-real-spoonacular-key"
+git clone <YOUR_BACKEND_REPO_URL>
+cd <BACKEND_PROJECT_FOLDER>
 ```
 
-To make it persistent across sessions, add the line above to `~/.bashrc`, `~/.zshrc`, or your shell profile.
+Replace:
 
----
+- `<YOUR_BACKEND_REPO_URL>` with your GitHub repository URL.
+- `<BACKEND_PROJECT_FOLDER>` with the backend project folder name.
 
-#### 2.3 macOS (Terminal)
+> The `Dockerfile` is already included in the backend project root (same folder as `pom.xml`).
 
-In Terminal:
+### 3. Build the Docker image
+
+From the backend project root:
 
 ```bash
-export SPOONACULAR_API_KEY="your-real-spoonacular-key"
+docker build -t recipe-backend .
 ```
 
-As on Linux, add it to your shell profile if you want it to persist.
+This will:
 
----
+- Use Maven inside a container to run `mvn clean package`.
+- Build the Spring Boot JAR file.
+- Create a final Docker image named `recipe-backend` with Java 17 and your application.
 
-#### 2.4 (Optional) IDE Run Configuration
-
-If running from an IDE (e.g. IntelliJ):
-
-- Add `SPOONACULAR_API_KEY` in the **Run/Debug configuration** → Environment variables:
-    - Name: `SPOONACULAR_API_KEY`
-    - Value: `your-real-spoonacular-key`
-
-Spring will pick it up automatically.
-
----
-
-### 3. Build and Run Using Docker (All OS)
-
-You can run the backend as a Docker container using the provided multi-stage Dockerfile:
-
-```dockerfile
-# Stage 1: Build the JAR file
-FROM maven:3.9.4-eclipse-temurin-17 as builder
-WORKDIR /app
-COPY pom.xml .
-COPY src ./src
-RUN mvn clean package
-
-# Stage 2: Build the runtime image
-FROM openjdk:17-jdk-alpine
-WORKDIR /app
-COPY --from=builder /app/target/recipe-0.0.1-SNAPSHOT.jar app.jar
-EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
-```
-
-#### 3.1 Build the Docker image
-
-From the project root (where `pom.xml` and `Dockerfile` are located):
+### 4. Run the Docker container with your API key
 
 ```bash
-docker build -t recipe-app .
-```
-
----
-
-#### 3.2 Run the Docker container with the API key
-
-Run the container and pass the `SPOONACULAR_API_KEY` environment variable:
-
-```bash
-docker run -p 8080:8080   -e SPOONACULAR_API_KEY="your-real-spoonacular-key"   recipe-app
+docker run -p 8080:8080   -e SPOONACULAR_API_KEY="your-real-spoonacular-key"   recipe-backend
 ```
 
 Notes:
 
-- On Linux/macOS this command works as-is.
-- On Windows PowerShell, you can use the same command or put it on one line if escaping is an issue.
-- Inside the container, `SPOONACULAR_API_KEY` is mapped to `spoonacular.api_key` via `application.properties`.
+- `-p 8080:8080` maps container port **8080** to host port **8080**.
+- `-e SPOONACULAR_API_KEY=...` passes your Spoonacular API key into the container.
+- On Windows PowerShell / CMD you can also run this as a single line (no `\`):
 
----
+  ```bash
+  docker run -p 8080:8080 -e SPOONACULAR_API_KEY="your-real-spoonacular-key" recipe-backend
+  ```
 
-### 4. Manual Build and Run (All OS, without Docker)
+### 5. Verify the API is running
 
-You can also run the Spring Boot app directly using Maven and Java.
+Once the container is running, you can access:
 
-#### 4.1 Build the application JAR
-
-From the project root:
-
-```bash
-mvn clean package
-```
-
-This compiles the project and creates:
-
-```text
-target/recipe-0.0.1-SNAPSHOT.jar
-```
-
-Make sure `SPOONACULAR_API_KEY` is set (see section 2) **before** running the next step.
-
----
-
-#### 4.2 Run the Spring Boot application
-
-Run the JAR with Java 17:
-
-```bash
-java -jar target/recipe-0.0.1-SNAPSHOT.jar
-```
-
-This command is the same on **Windows**, **Linux**, and **macOS**, as long as Java 17 is on the PATH.
-
-Spring Boot will:
-
-- Resolve `spoonacular.api_key=${SPOONACULAR_API_KEY}`.
-- Use the Spoonacular key from the environment variable you set.
-
----
-
-### 5. Verify the API is Running
-
-Once the application is up (via Docker or manual run), verify with:
-
-- **Base URL**  
+- **Base URL**:  
   `http://localhost:8080`
-
-- **Swagger UI**  
+- **Swagger UI**:  
   `http://localhost:8080/swagger-ui.html`
-
-- **OpenAPI JSON**  
+- **OpenAPI JSON**:  
   `http://localhost:8080/api-docs`
 
-A **Postman collection** is included in the main project folder with sample requests and responses for different scenarios.
+You can open the Swagger UI in a browser and test the endpoints directly.
 
 ---
 
@@ -239,49 +136,57 @@ The backend uses a layered architecture:
     - Encapsulates all calls to the Spoonacular API.
     - Constructs URLs, attaches the API key, and maps responses to internal DTOs.
 - **Model/DTO layer**
-    - Defines `RecipeSearchReq`, `RecipeInformationReq`, `RecipeNutritionInformationReq`, `RecipeSearchRes`, `RecipeDto`, `Nutrition`, etc.
+    - Defines request and response objects such as:
+        - `RecipeSearchReq`, `RecipeInformationReq`, `RecipeNutritionInformationReq`
+        - `RecipeSearchRes`, `RecipeDto`, `Nutrition`, etc.
     - Decouples external API models from internal API contracts.
 
-This separation improves:
+This structure improves:
 
 - Maintainability.
-- Testability (each layer can be tested individually).
-- Clarity when adding new features or changing external integrations.
+- Testability (each layer can be tested independently).
+- Clarity when adding new features or adjusting external integrations.
 
 ---
 
 ### 2. Secure API Key Handling (Backend as Middleware)
 
-Key design choices for security:
+To protect the Spoonacular API key:
 
-- The Spoonacular API key is **not hardcoded** in code.
-- It is externalized as:
-    - `spoonacular.api_key=${SPOONACULAR_API_KEY}` in `application.properties`.
-    - The environment variable `SPOONACULAR_API_KEY` set at runtime.
-- Only the **backend** ever sees the key:
-    - The React frontend never receives it.
-    - It is not logged or exposed via Swagger.
+- The key is **not hardcoded** in the source code.
+- It is provided as an environment variable:
+
+    - In `application.properties`:
+      ```properties
+      spoonacular.api_key=${SPOONACULAR_API_KEY}
+      ```
+
+    - At runtime via:
+        - Docker environment (`-e SPOONACULAR_API_KEY=...`), or
+        - OS/terminal environment variable.
+
+- The React frontend never sees the key and never talks directly to Spoonacular.
 
 This ensures:
 
 - Secrets are not committed to version control.
 - Different environments (dev/test/prod) can use different keys without code changes.
-- The backend safely acts as a **middleware** between the client and Spoonacular.
+- The backend safely acts as a **secure proxy/middleware** between the client and Spoonacular.
 
 ---
 
 ### 3. Swagger / OpenAPI Integration
 
-The project integrates **springdoc-openapi** to automatically generate:
+The backend uses **springdoc-openapi** to automatically generate:
 
 - **Swagger UI** at `/swagger-ui.html`.
 - **OpenAPI specification** at `/api-docs`.
 
-Advantages:
+Benefits:
 
-- API documentation stays in sync with the code.
-- Reviewers and frontend developers can explore endpoints and payloads easily.
-- Quick manual testing without needing a separate client.
+- API documentation is always in sync with the code.
+- Easy exploration of endpoints and models.
+- Simple manual testing without additional tools.
 
 ---
 
@@ -290,113 +195,108 @@ Advantages:
 The API is designed to be:
 
 - **RESTful** and stateless.
-- **Clear** in its endpoints and parameters.
+- Straightforward in naming and semantics.
 
 Examples:
 
-- `GET /api/recipes/search`
-- `GET /api/recipes/information`
-- `GET /api/recipes/nutrition/info`
+- `GET /api/recipes/search` – search for recipes.
+- `GET /api/recipes/information` – get detailed recipe information.
+- `GET /api/recipes/nutrition/info` – get nutrition data with option to exclude ingredients.
 
 Validation:
 
-- Uses `@Valid` on controller method parameters.
-- Bean validation annotations like `@Min` to enforce value ranges.
-- Enums like `SortOption`, `SortDirection`, `Intolerances` for controlled inputs.
+- `@Valid` on controller parameters.
+- Bean Validation annotations like `@Min` for numeric constraints.
+- Enums (`SortOption`, `SortDirection`, `Intolerances`, etc.) for safe, controlled values.
 
-This enforces:
+This leads to:
 
 - Early rejection of invalid input.
-- Predictable behavior for consumers.
-- Reduced risk of unexpected runtime errors.
+- Consistent and predictable API behavior.
+- Reduced runtime errors.
 
 ---
 
 ### 5. Centralized Error Handling
 
-The application uses:
+The backend uses:
 
-- `@ControllerAdvice` to capture exceptions globally.
-- Custom exception types and standardized error responses.
+- `@ControllerAdvice` for global exception handling.
+- Custom exception types for business and integration errors.
 
 Goals:
 
-- Provide consistent error JSON across all endpoints.
-- Hide low-level technical details from API consumers.
-- Detect and translate Spoonacular-specific errors (e.g. HTTP 402 for daily limit exceeded) into **clear messages** that the frontend can display.
+- Provide consistent error JSON across endpoints.
+- Hide internal stack traces and technical details from clients.
+- Translate Spoonacular-specific errors (e.g., HTTP 402 “daily points limit exceeded”) into **clear, user-friendly messages** that the frontend can display.
 
 ---
 
-### 6. Multi-Stage Dockerfile
+### 6. Dockerized Runtime
 
-The Dockerfile follows a **multi-stage** pattern:
+The application is packaged into a Docker image using a **multi-stage build**:
 
-1. **Builder stage**
-    - Uses `maven:3.9.4-eclipse-temurin-17`.
-    - Runs `mvn clean package`.
-    - Produces the runnable JAR.
-
-2. **Runtime stage**
-    - Uses a slim `openjdk:17-jdk-alpine` image.
-    - Copies the built JAR.
-    - Exposes port `8080` and runs `java -jar app.jar`.
+- Build stage:
+    - Uses Maven and Java 17 inside a container to compile and package the app.
+- Runtime stage:
+    - Uses a Java 17 runtime image to run the built JAR.
+    - Exposes port 8080.
 
 Benefits:
 
-- Smaller final image (no Maven or build tools).
-- Clear separation of build and runtime concerns.
-- Portable, production-friendly container.
+- Consistent runtime across Windows, Linux, and macOS.
+- No requirement for reviewers to install Java or Maven locally.
+- Simple startup using only Docker and an environment variable.
 
 ---
 
 ## AI Usage Reflection
 
-The assignment requires **AI integration**, including using AI for boilerplate, challenging AI for optimized solutions, and documenting focus areas, challenges, and lessons learned.
+As required by the assignment, AI was used as a helper for repetitive and boilerplate tasks, while all important decisions were reviewed and validated.
 
 ### How AI Was Used
 
 AI was used to:
 
-- Generate initial **skeletons** for:
-    - Controllers, services, and DTOs.
+- Draft initial versions of:
+    - Controller/service/DTO structures.
     - Error handling patterns using `@ControllerAdvice`.
-- Propose a **multi-stage Dockerfile** for Maven + Spring Boot.
-- Suggest patterns for securing configuration:
-    - Using environment variables and `${SPOONACULAR_API_KEY}`.
-- Draft and structure this **README**:
-    - Setup instructions across OS and run modes.
-    - Design decisions explanation.
-    - AI reflection and lessons learned.
+- Suggest a multi-stage Docker strategy for:
+    - Building the JAR in one stage.
+    - Running it in a lighter runtime stage.
+- Propose configuration patterns using:
+    - Environment variables (`SPOONACULAR_API_KEY`).
+    - Spring Boot property placeholders.
+- Help structure this README:
+    - Setup steps for Docker and manual runs.
+    - Design decisions.
+    - Reflection and lessons learned.
 
-This reduced time spent on repetitive setup and documentation tasks.
+This sped up boilerplate and documentation work.
 
 ---
 
-### How AI Output Was Challenged and Validated
+### How AI Output Was Reviewed and Improved
 
-AI-generated ideas were **not accepted blindly**. They were reviewed and adjusted:
+AI suggestions were **always validated and adapted**:
 
-- **Security & configuration**
-    - AI examples that suggested hardcoded keys were rejected.
-    - The final approach uses environment variables and property placeholders to avoid committing secrets.
+- **Security**:
+    - Any suggestion to hardcode API keys or secrets was rejected.
+    - Final approach uses environment variables exclusively.
 
-- **DTO and API contract**
-    - AI assumed generic response structures.
-    - DTOs were verified and aligned with the actual Spoonacular API and the project’s real response requirements.
+- **Contracts and DTOs**:
+    - DTOs and responses were aligned with the actual Spoonacular API and business requirements, not just AI assumptions.
 
-- **Error handling**
-    - Generic error-handling patterns were adapted to:
-        - Recognize Spoonacular’s 402 “daily points limit” errors.
-        - Return user-friendly messages to the frontend instead of raw error text.
+- **Error handling**:
+    - Generic patterns were refined to:
+        - Recognize Spoonacular’s 402 quota error.
+        - Produce user-friendly error structures for the frontend.
 
-- **Docker**
-    - The multi-stage Dockerfile from AI was tested.
-    - The final file ensures that:
-        - The correct JAR (`recipe-0.0.1-SNAPSHOT.jar`) is copied.
-        - The container exposes port `8080`.
-        - The application starts correctly in all environments.
+- **Docker integration**:
+    - The Docker approach was tested on real machines.
+    - Ensured the image starts consistently across OSes using only Docker.
 
-In short, AI functioned as a **productivity helper**, while architecture, security, and behavior were decided and validated through manual reasoning and testing.
+AI was treated as a **productivity tool**, not an authority: final decisions and behavior are based on deliberate design and testing.
 
 ---
 
@@ -404,35 +304,33 @@ In short, AI functioned as a **productivity helper**, while architecture, securi
 
 ### Lessons Learned
 
-1. **Secrets must be externalized early**  
-   Using `SPOONACULAR_API_KEY` and `spoonacular.api_key=${SPOONACULAR_API_KEY}` keeps sensitive data out of the codebase and simplifies deployment across environments.
+1. **Externalizing secrets is essential**  
+   Using `SPOONACULAR_API_KEY` and mapping it via `spoonacular.api_key=${SPOONACULAR_API_KEY}` avoids leaking secrets into the codebase and makes deployments flexible.
 
-2. **Layered design pays off**  
-   Separating concerns into controllers, services, REST clients, and DTOs makes the project easier to understand and evolve.
+2. **Layered architecture makes changes easier**  
+   Controllers, services, REST clients, and DTOs each have clear roles, which simplifies debugging and adding features.
 
 3. **Error handling is part of the API design**  
-   Handling external API limits and network issues gracefully creates a better experience for frontend developers and end users.
+   Centralized, consistent error responses greatly improve the developer experience and reduce confusion on the frontend.
 
-4. **Docker multi-stage builds are very effective**  
-   Building the JAR in one image and running it in a slimmer runtime image leads to leaner, more maintainable containers.
+4. **Docker removes environment friction**  
+   Reviewers can run the backend on any OS with a single `docker build` + `docker run` flow, with no need to align Java versions.
 
-5. **AI is helpful but must be verified**  
-   AI speeds up boilerplate and documentation but:
-    - Must be checked against real endpoints, tools, and runtime behavior.
-    - Cannot replace human judgment for security, architecture, and error handling decisions.
+5. **AI is powerful but must be supervised**  
+   It helps with scaffolding and documentation, but every suggestion must be checked against real requirements, security concerns, and runtime behavior.
 
 ---
 
-## Highlights
+### Highlights
 
 - A **secure, layered Spring Boot backend** that:
-    - Keeps the Spoonacular API key out of source control.
-    - Exposes clear, well-documented endpoints for the frontend.
-    - Translates external API errors into meaningful, user-friendly responses.
-- Cross-platform **setup instructions** for:
-    - Windows, Linux, and macOS.
-    - Both Docker-based and manual Java/Maven workflows.
-- A backend ready to serve as a robust middleware layer in the full-stack Recipe Application, aligned with the assignment requirements:
+    - Hides the Spoonacular API key.
+    - Exposes clean, well-documented REST endpoints.
+    - Offers meaningful error messages to the frontend.
+- A **Docker-first** run strategy:
+    - Same steps for Windows, macOS, and Linux.
+    - Minimal setup friction for reviewers.
+- Documentation aligned with the assignment requirements:
     - **Setup instructions**
     - **Design decisions**
     - **AI usage reflection**
