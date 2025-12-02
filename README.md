@@ -15,6 +15,13 @@ This backend:
 - Acts as a **secure middleware** between the frontend (e.g. React) and the **Spoonacular API**.
 - Keeps the **Spoonacular API key** on the server side and never exposes it to the client.
 
+
+## GitHub Repository
+
+- Backend repository: [https://github.com/mohdalibasha123/recipe](https://github.com/mohdalibasha123/recipe)
+- FrontEnd repository: [https://github.com/mohdalibasha123/recipe-ui](https://github.com/mohdalibasha123/recipe-ui)
+
+
 ---
 
 ## Features
